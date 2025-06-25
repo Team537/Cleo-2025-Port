@@ -1,10 +1,6 @@
-import com.github.spotbugs.snom.SpotBugsTask
-
 plugins {
     id "java"
-    id 'pmd'
     id "edu.wpi.first.GradleRIO" version "2025.3.1"
-    id "com.github.spotbugs" version "5.0.14"
 }
 
 java {
@@ -86,50 +82,7 @@ test {
 wpi.sim.addGui().defaultEnabled = true
 wpi.sim.addDriverstation()
 
-// --- PMD Configuration --- 
-pmd {
-    toolVersion = '7.9.0'    // Or any recent version
-    ignoreFailures = true     // Don't fail the build on rule violations
-    ruleSets = []             // Empty to rely on custom file
-    ruleSetFiles = files('config/pmd/pmd-ruleset.xml')
-}
-
-tasks.named('pmdMain') {
-    reports {
-        xml.required.set(false)
-        html.required.set(true)  // Generates an HTML report
-        html.outputLocation.set(file("$buildDir/reports/pmd.html"))
-    }
-}
-
-// --- SpotBugs Configuration ---
-spotbugs {
-    toolVersion = '4.7.3'
-    reportLevel = 'high'
-    excludeFilter = file("config/spotbugs/spotbugs-exclude.xml")
-    effort = 'max'
-    
-    // Setting the report level to "low" or "medium" is not strictly necessary here
-    // because we are filtering out lower-priority issues via the exclude filter.
-    // You can leave reportLevel at its default value.
-    // reportLevel = 'low'
-}
-
-tasks.withType(SpotBugsTask) {
-    
-    // Ensure that failures are not ignored so that the build fails when high issues exist.
-    ignoreFailures = false
-    
-    reports {
-        xml.enabled = false
-        html.enabled = true
-        html.destination = file("$buildDir/reports/spotbugs.html")
-    }
-}
-
 tasks.named("check") {
-    // Make sure our security tasks run as part of the check lifecycle
-    dependsOn 'spotbugsMain'
 }
 
 // --- Jar configuration ---

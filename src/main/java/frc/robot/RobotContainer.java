@@ -14,6 +14,9 @@ import frc.robot.network.UDPReceiver;
 import frc.robot.commands.XboxParkerManualDriveCommand;
 import frc.robot.subsystems.DriveSubsystem;
 import frc.robot.subsystems.ExampleSubsystem;
+import frc.robot.subsystems.CLEO.Arm;
+import frc.robot.subsystems.CLEO.Intake;
+import frc.robot.subsystems.CLEO.Shooter;
 import frc.robot.subsystems.upper_assembly.UpperAssemblyBase;
 import frc.robot.subsystems.vision.OceanViewManager;
 import frc.robot.subsystems.vision.odometry.PhotonVisionCamera;
@@ -26,10 +29,17 @@ import frc.robot.util.upper_assembly.UpperAssemblyType;
 
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.XboxController.Button;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
+import edu.wpi.first.wpilibj2.command.StartEndCommand;
+import edu.wpi.first.wpilibj2.command.button.JoystickButton;
+import edu.wpi.first.wpilibj2.command.button.POVButton;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
+
 
 /**
  * This class is where the bulk of the robot should be declared. Since
@@ -38,6 +48,32 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
  * the robot (including subsystems, commands, and trigger mappings) should be declared here.
  */
 public class RobotContainer {
+    private final XboxController driverController = new XboxController(0);
+
+    private final Arm Arm = new Arm();
+    private final Intake Intake = new Intake();
+    private final Shooter Shooter = new Shooter();
+
+
+    JoystickButton startButton = new JoystickButton(driverController, Button.kStart.value);
+    JoystickButton backButton = new JoystickButton(driverController, Button.kBack.value);
+    JoystickButton rightStick = new JoystickButton(driverController, Button.kRightStick.value);
+    JoystickButton leftStick = new JoystickButton(driverController, Button.kLeftStick.value);
+    JoystickButton rightBumper = new JoystickButton(driverController, Button.kRightBumper.value);
+    JoystickButton leftBumper = new JoystickButton(driverController, Button.kLeftBumper.value);
+    JoystickButton aButton = new JoystickButton(driverController, Button.kA.value);
+    JoystickButton bButton = new JoystickButton(driverController, Button.kB.value);
+    JoystickButton yButton = new JoystickButton(driverController, Button.kY.value);
+    JoystickButton xButton = new JoystickButton(driverController, Button.kX.value);
+    POVButton dPadUpButton = new POVButton(driverController, 0);
+    POVButton dPadDownButton = new POVButton(driverController, 180);
+    POVButton dPadRightButton = new POVButton(driverController, 90);
+    POVButton dPadLeftButton = new POVButton(driverController, 270);
+
+ 
+
+    TriggerButton leftTrigger = new TriggerButton(driverController);
+
 
     // Replace with CommandPS4Controller or CommandJoystick if needed
     private final XboxController xBoxController = new XboxController(OperatorConstants.DRIVER_CONTROLLER_PORT);
@@ -68,15 +104,94 @@ public class RobotContainer {
 
     /**
      * Creates a new RobotContainer object and sets up SmartDashboard an the button inputs.
-     */
+          */
     public RobotContainer() {
+
+            //triggers -----------------------------------------------
+        leftTrigger.onTrue(new ParallelCommandGroup(new StartEndCommand(Shooter::ShooterAmp, Shooter::ShooterAmp, Shooter),
+        new StartEndCommand(Intake::IntakeAmp, Intake::IntakeAmp, Intake)));
+
+        leftTrigger.onFalse(new ParallelCommandGroup(new StartEndCommand(Shooter::ShooterStop, Shooter::ShooterStop, Shooter),
+        new StartEndCommand(Intake::IntakeStop, Intake::IntakeStop, Intake)));
         
+        //Bumpers ------------------------------------------------
+
+        leftBumper.onTrue(new ParallelCommandGroup( new StartEndCommand(Shooter::ShooterForward, Shooter::ShooterForward,Shooter), 
+            new StartEndCommand(Intake::IntakeStop, Intake::IntakeMax, Intake).withTimeout(1)));
+
+        leftBumper.onFalse(new ParallelCommandGroup( new StartEndCommand(Shooter::ShooterForward, Shooter::ShooterStop,Shooter).withTimeout(0.25), 
+            new StartEndCommand(Intake::IntakeStop, Intake::IntakeStop, Intake)));
+        
+
+        rightBumper.toggleOnTrue(new ParallelCommandGroup(new StartEndCommand(Intake::IntakeForward, Intake::IntakePIDOff, Intake).until(()-> Intake.GetSwitchHit()),
+            new StartEndCommand(Arm::ArmIntake, Arm::ArmSubwoofer, Arm).until(()-> Intake.GetSwitchHit())));
+
+        //   rightBumper.onFalse(new StartEndCommand(Intake::IntakeOff, Intake::IntakeOff, Intake));
+
+        //ABXY ---------------------------------------------------------
+
+        aButton.onTrue(new StartEndCommand(Arm::ArmIntake, Arm::ArmIntake, Arm));
+
+        // aButton.onFalse(null
+
+
+        bButton.onTrue(new StartEndCommand(Arm::ArmSubwoofer, Arm::ArmSubwoofer, Arm));
+
+        // bButton.onFalse(null);
+
+
+        xButton.onTrue(new StartEndCommand(Arm::ArmMid, Arm::ArmMid, Arm));
+
+        // xButton.onFalse(null);
+
+
+        yButton.onTrue(new StartEndCommand(Arm::ArmAmp, Arm::ArmAmp, Arm));
+
+        // yButton.onFalse(null);
+
+
+        //D-PAD ---------------------------------------------
+
+        // dPadUpButton.onTrue(null);
+
+        // dPadUpButton.onFalse(null);
+
+
+        // dPadDownButton.onTrue(new StartEndCommand(Arm::ArmSmartSet, Arm::ArmSmartSet, Arm).withTimeout(0));
+
+        // dPadDownButton.onFalse(null);
+
+
+        dPadLeftButton.onTrue(new StartEndCommand(Arm::ArmManualUp, Arm::ArmManualUp, Arm));
+
+        dPadLeftButton.onFalse(new StartEndCommand(Arm::ArmManualStop, Arm::ArmManualStop, Arm));
+
+
+        dPadRightButton.onTrue(new StartEndCommand(Arm::ArmManualDown, Arm::ArmManualDown, Arm));
+
+        dPadRightButton.onFalse(new StartEndCommand(Arm::ArmManualStop, Arm::ArmManualStop, Arm));
+
+
+        //Start and Back --------------------------------------------
+
+        // Reset the IMU when the start button is pressed.
+        startButton.onTrue(new InstantCommand(driveSubsystem::zeroHeading));
+        
+        //startButton.onFalse(null);
+
+
+        backButton.onTrue(new ParallelCommandGroup( new StartEndCommand(Shooter::ShooterReverse, Shooter::ShooterStop,Shooter), 
+            new StartEndCommand(Intake::IntakeReverse, Intake::IntakeStop, Intake)));
+
+        backButton.onFalse(new ParallelCommandGroup( new StartEndCommand(Shooter::ShooterStop, Shooter::ShooterStop,Shooter), 
+            new StartEndCommand(Intake::IntakeStop, Intake::IntakeStop, Intake)));
+            
         // Setup OceanView & all of its networking dependencies.
-        setupOceanViewManager();
+        // setupOceanViewManager();
 
         // Add cameras to the VisionOdometry object.
-        visionOdometry.addCamera(new PhotonVisionCamera(VisionConstants.FRONT_CAMERA_NAME, new Transform3d()));
-        visionOdometry.addCamera(new PhotonVisionCamera(VisionConstants.SLIDE_CAMERA_NAME, new Transform3d()));
+        // visionOdometry.addCamera(new PhotonVisionCamera(VisionConstants.FRONT_CAMERA_NAME, new Transform3d()));
+        // visionOdometry.addCamera(new PhotonVisionCamera(VisionConstants.SLIDE_CAMERA_NAME, new Transform3d()));
 
         // Setup Dashboard
         setupSmartDashboard();
@@ -123,8 +238,8 @@ public class RobotContainer {
     private void configureBindings() {
         
         // Schedule `ExampleCommand` when `exampleCondition` changes to `true`
-        new Trigger(exampleSubsystem::exampleCondition)
-                .onTrue(new ExampleCommand(exampleSubsystem));
+        // new Trigger(exampleSubsystem::exampleCondition)
+        //         .onTrue(new ExampleCommand(exampleSubsystem));
 
         // Schedule `exampleMethodCommand` when the Xbox controller's B button is
         // pressed, cancelling on release.
@@ -185,6 +300,6 @@ public class RobotContainer {
     public void scheduleTeleOp() {
         // The Drive Command
         driveSubsystem.setDefaultCommand(manualDriveCommand);
-        upperAssembly.setDefaultCommand(upperAssembly.getManualCommand(xBoxController));
+        // upperAssembly.setDefaultCommand(upperAssembly.getManualCommand(xBoxController));
     }
 }

@@ -630,5 +630,8 @@ public class DriveSubsystem extends SubsystemBase {
         translatedPathfindingObstacles = translatePathfindingObstacles(pathfindingObstacles);
         Pathfinding.setDynamicObstacles(translatedPathfindingObstacles, getRobotPose().getTranslation());
     }
+    public void zeroHeading() {
+        gyroscope.reset();
+    }
 
 }
